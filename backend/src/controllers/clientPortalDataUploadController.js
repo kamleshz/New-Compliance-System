@@ -6,6 +6,7 @@ import { fetchCcpClientById, fetchCcpClients } from '../services/ccpClientServic
 import { sendMail } from '../services/mailService.js';
 import { getTeamUserIdsForManager, getTeamUserIdsForOperationHead } from '../services/userService.js';
 import { calculateEprTargets, DEFAULT_OPTIONS } from '../services/eprTargetCalculationService.js';
+import { collectActiveComplianceManagers } from '../utils/teamAssignments.js';
 
 export const getManagerPurchaseReviews = async (req, res, next) => {
   try {
@@ -534,13 +535,15 @@ async function resolveNotificationRecipients(job) {
       : null;
     recipients = await getManagerUsersForUser(submittedByUser);
   } else if (job.type === 'compliance') {
-    recipients = await getComplianceManagerUsers();
+    recipients = await getComplianceManagerUsersForSubmitter(job.submittedById);
   } else if (job.type === 'submitter' && job.submittedById) {
     const user = await User.findById(job.submittedById).select('name email').lean();
     recipients = user ? [user] : [];
   }
 
-  const adminUsers = await getAdminUsers();
+  // Compliance handoffs are intentionally scoped to the managers selected on
+  // the submitter's team. Admins still receive the other workflow handoffs.
+  const adminUsers = job.type === 'compliance' ? [] : await getAdminUsers();
   return uniqueNotificationRecipients([...recipients, ...adminUsers]);
 }
 
@@ -574,19 +577,21 @@ async function getManagerUsersForUser(user) {
   return [...recipients.values()];
 }
 
-async function getComplianceManagerUsers() {
-  const users = await User.find({ isActive: { $ne: false }, status: { $ne: 'inactive' } })
-    .populate('roleId')
-    .select('name email roleId')
-    .lean();
+async function getComplianceManagerUsersForSubmitter(submittedById) {
+  if (!submittedById) return [];
 
-  return users
-    .filter((user) => {
-      const roleName = String(user?.roleId?.roleName || '').toLowerCase();
-      return roleName === 'compliance' || roleName === 'compliance manager';
-    })
-    .map((user) => ({ _id: user._id, name: user.name || 'Compliance Manager', email: user.email || '' }))
-    .filter((user) => user._id);
+  const submitter = await User.findById(submittedById).select('_id teamId departmentId').lean();
+  if (!submitter) return [];
+
+  const teamIds = [submitter.teamId, submitter.departmentId].filter(Boolean);
+  const teams = await Department.find({
+    $or: [
+      ...(teamIds.length ? [{ _id: { $in: teamIds } }] : []),
+      { members: submitter._id },
+    ],
+  }).populate('operationHead operationHeads', 'name email isActive status').lean();
+
+  return collectActiveComplianceManagers(teams);
 }
 
 async function getAdminUsers() {

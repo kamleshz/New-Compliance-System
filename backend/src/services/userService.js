@@ -76,11 +76,17 @@ export const deleteUser = async (id) => {
 };
 
 export const getTeamUserIdsForOperationHead = async (operationHeadId) => {
-  const teams = await Department.find({ operationHead: operationHeadId }).select('_id members manager operationHead').lean();
+  const teams = await Department.find({
+    $or: [
+      { operationHead: operationHeadId },
+      { operationHeads: operationHeadId },
+    ],
+  }).select('_id members manager operationHead operationHeads').lean();
   const ids = new Set([String(operationHeadId)]);
   teams.forEach((team) => {
     if (team.manager) ids.add(String(team.manager));
     if (team.operationHead) ids.add(String(team.operationHead));
+    (team.operationHeads || []).forEach((headId) => ids.add(String(headId)));
     (team.members || []).forEach((memberId) => ids.add(String(memberId)));
   });
   return [...ids];

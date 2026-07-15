@@ -6,6 +6,7 @@ const departmentSchema = new mongoose.Schema({
   description: { type: String },
   manager: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   operationHead: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  operationHeads: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true });

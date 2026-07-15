@@ -34,7 +34,7 @@ const emptyTeamForm = {
   teamName: '',
   description: '',
   managerId: '',
-  operationHeadId: '',
+  operationHeadIds: [],
   members: [],
 };
 
@@ -177,6 +177,15 @@ function Users() {
     }));
   };
 
+  const setTeamComplianceManagers = (operationHeadIds) => {
+    setTeamForm((current) => ({
+      ...current,
+      operationHeadIds: typeof operationHeadIds === 'function'
+        ? operationHeadIds(current.operationHeadIds)
+        : operationHeadIds,
+    }));
+  };
+
   const uploadAvatar = (dataUrl) => {
     setUserForm((current) => ({ ...current, avatarUrl: dataUrl }));
   };
@@ -247,7 +256,7 @@ function Users() {
         departmentName: normalizeName(teamForm.teamName),
         description: teamForm.description.trim(),
         managerId: teamForm.managerId,
-        operationHeadId: teamForm.operationHeadId,
+        operationHeadIds: teamForm.operationHeadIds,
         members: teamForm.members,
       });
       setSuccess('Team created successfully.');
@@ -363,6 +372,7 @@ function Users() {
           error={formError}
           saving={saving}
           onChange={handleTeamChange}
+          onSetComplianceManagers={setTeamComplianceManagers}
           onSetMembers={setTeamMembers}
           onClose={closeModals}
           onSubmit={saveTeam}
@@ -520,7 +530,7 @@ function UserModal({ mode, form, users, roles, teams, error, saving, onChange, o
   );
 }
 
-function TeamModal({ form, users, error, saving, onChange, onSetMembers, onClose, onSubmit }) {
+function TeamModal({ form, users, error, saving, onChange, onSetComplianceManagers, onSetMembers, onClose, onSubmit }) {
   const [memberSearch, setMemberSearch] = useState('');
   const managerOptions = getAssignableUsers(users, ['Manager', 'Admin', 'Super Admin']);
   const complianceManagerOptions = getAssignableUsers(users, ['Compliance', 'Operation', 'Admin', 'Super Admin']);
@@ -537,13 +547,17 @@ function TeamModal({ form, users, error, saving, onChange, onSetMembers, onClose
     onSetMembers((current) => mergeIdSelections(current, visibleUsers.map((user) => user._id)));
   };
 
+  const toggleComplianceManager = (userId) => {
+    onSetComplianceManagers((current) => toggleIdSelection(current, userId));
+  };
+
   return (
     <ModalShell title="Create New Team" subtitle="Set team details, assign leadership and select members." onClose={onClose}>
       <form onSubmit={onSubmit} className="flex h-full flex-col">
         <div className="flex-1 space-y-6 overflow-y-auto p-6">
           <div className="grid gap-3 sm:grid-cols-3">
             <DrawerStat label="Manager" value={form.managerId ? 'Assigned' : 'Pending'} icon={<UserRound className="h-4 w-4" />} />
-            <DrawerStat label="Compliance Manager" value={form.operationHeadId ? 'Assigned' : 'Pending'} icon={<ShieldCheck className="h-4 w-4" />} />
+            <DrawerStat label="Compliance Managers" value={form.operationHeadIds.length ? `${form.operationHeadIds.length} assigned` : 'Pending'} icon={<ShieldCheck className="h-4 w-4" />} />
             <DrawerStat label="Members" value={`${form.members.length} selected`} icon={<UsersIcon className="h-4 w-4" />} />
           </div>
 
@@ -568,10 +582,34 @@ function TeamModal({ form, users, error, saving, onChange, onSetMembers, onClose
                 <option value="">Select manager</option>
                 {managerOptions.map((user) => <option key={user._id} value={user._id}>{user.name}</option>)}
               </SelectField>
-              <SelectField label="Compliance Manager" name="operationHeadId" value={form.operationHeadId} onChange={onChange} required helper="Responsible for compliance review and escalation handling.">
-                <option value="">Select compliance manager</option>
-                {complianceManagerOptions.map((user) => <option key={user._id} value={user._id}>{user.name}</option>)}
-              </SelectField>
+              <fieldset>
+                <legend className="admin-field-label">Compliance Managers <span className="text-red-500">*</span></legend>
+                <div className="mt-1 max-h-52 space-y-1 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-2">
+                  {complianceManagerOptions.length ? complianceManagerOptions.map((user) => {
+                    const selected = form.operationHeadIds.includes(user._id);
+                    return (
+                      <label
+                        key={user._id}
+                        className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition ${selected ? 'border-emerald-300 bg-emerald-50' : 'border-transparent bg-white hover:border-slate-200'}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() => toggleComplianceManager(user._id)}
+                          className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-bold text-slate-900">{user.name}</span>
+                          <span className="block truncate text-xs text-slate-500">{user.email}</span>
+                        </span>
+                      </label>
+                    );
+                  }) : (
+                    <p className="px-3 py-5 text-center text-sm font-medium text-slate-500">No eligible compliance managers found.</p>
+                  )}
+                </div>
+                <span className="mt-2 block text-xs font-medium text-slate-500">Every selected manager will receive team compliance notifications and emails.</span>
+              </fieldset>
             </div>
           </section>
 
@@ -822,7 +860,7 @@ function validateUserForm(form, mode) {
 function validateTeamForm(form) {
   if (!normalizeName(form.teamName)) return 'Team name is required.';
   if (!form.managerId) return 'Manager is required.';
-  if (!form.operationHeadId) return 'Operation head is required.';
+  if (!form.operationHeadIds.length) return 'Select at least one compliance manager.';
   if (!form.members.length) return 'Select at least one member.';
   return '';
 }
