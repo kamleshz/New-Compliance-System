@@ -28,7 +28,7 @@ For a manual Render Web Service, use:
 Add the values shown in `backend/.env.example` to the Render environment. At minimum, configure:
 
 - `MONGO_URI`
-- `JWT_SECRET` (the Blueprint can generate this)
+- `JWT_SECRET` (required; use at least 32 random characters—the Blueprint can generate this)
 - `CCP_API_BASE_URL`
 - `CCP_API_KEY`
 - `FRONTEND_URL`, `APP_BASE_URL`, and `CORS_ORIGINS` after Vercel provides the frontend URL
@@ -54,6 +54,8 @@ Add this Vercel environment variable for Production, Preview, and Development as
 
 Deploy the project. `frontend/vercel.json` makes client-side routes work when a page is opened or refreshed directly.
 
+If the browser still references an older hashed file after deployment, perform a hard refresh once (`Ctrl+Shift+R`). The login response uses `no-store` headers so future deployments pick up the current bundle.
+
 ## 4. Connect both deployments
 
 Copy the final Vercel URL and set these Render variables to it without a trailing slash:
@@ -65,6 +67,20 @@ CORS_ORIGINS=https://YOUR-PROJECT.vercel.app
 ```
 
 Use comma-separated URLs in `CORS_ORIGINS` if a custom domain also needs access. Redeploy Render after changing the variables, then test login and file viewing from the Vercel site.
+
+## 5. GitHub CI/CD
+
+Every push and pull request to `main` runs backend tests and a production frontend build in GitHub Actions. The production deployment workflow runs only after CI succeeds.
+
+Add these GitHub repository secrets under **Settings > Secrets and variables > Actions**:
+
+- `VERCEL_TOKEN`
+- `VERCEL_ORG_ID`
+- `VERCEL_PROJECT_ID`
+
+The Vercel deployment job skips safely until its secrets are configured. Render uses `autoDeployTrigger: checksPass` from `render.yaml`, so it deploys the backend only after the GitHub CI checks pass. For an existing manually configured Render service, select **After CI Checks Pass** under its auto-deploy setting.
+
+For the existing Render service, also open **Environment**, set `JWT_SECRET` to a stable random value of at least 32 characters, and redeploy. A missing signing secret causes token creation during login to fail.
 
 ## Production upload note
 

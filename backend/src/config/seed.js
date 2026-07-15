@@ -65,21 +65,26 @@ export const seedDatabase = async () => {
       console.log('Seeded compliance department');
     }
 
-    const existingAdmin = await User.findOne({ email: 'admin@company.com' });
-    if (!existingAdmin) {
-      const hashedPassword = await bcrypt.hash('Passw0rd!', 10);
+    const bootstrapEmail = String(process.env.BOOTSTRAP_ADMIN_EMAIL || '').trim().toLowerCase();
+    const bootstrapPassword = String(process.env.BOOTSTRAP_ADMIN_PASSWORD || '');
+
+    if (bootstrapEmail && bootstrapPassword) {
+      const existingAdmin = await User.findOne({ email: bootstrapEmail });
+      if (existingAdmin) return;
+
+      const hashedPassword = await bcrypt.hash(bootstrapPassword, 10);
       await User.create({
-        employeeCode: 'EMP001',
+        employeeCode: process.env.BOOTSTRAP_ADMIN_EMPLOYEE_CODE || 'EMP001',
         name: 'System Admin',
-        email: 'admin@company.com',
-        mobile: '+1234567890',
+        email: bootstrapEmail,
+        mobile: process.env.BOOTSTRAP_ADMIN_MOBILE || '+910000000000',
         password: hashedPassword,
         roleId: adminRole._id,
         departmentId: complianceDepartment._id,
         designation: 'Compliance Administrator',
         isActive: true,
       });
-      console.log('Seeded default admin user: admin@company.com / Passw0rd!');
+      console.log(`Seeded bootstrap admin user: ${bootstrapEmail}`);
     }
   } catch (error) {
     console.error('Seed database error:', error.message);

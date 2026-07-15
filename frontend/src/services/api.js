@@ -1,14 +1,5 @@
 import axios from 'axios';
-
-function normalizeApiBaseUrl(rawValue) {
-  const fallbackUrl = 'http://localhost:5000/api';
-  const value = String(rawValue || '').trim();
-  if (!value) return fallbackUrl;
-
-  const trimmed = value.replace(/\/+$/, '');
-  if (/\/api$/i.test(trimmed)) return trimmed;
-  return `${trimmed}/api`;
-}
+import { normalizeApiBaseUrl } from './apiBaseUrl.js';
 
 const baseURL = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL);
 

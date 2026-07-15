@@ -27,9 +27,13 @@ if (!department) {
   });
 }
 
-const email = 'demo.admin@compliance.local';
-const employeeCode = 'EMP999';
-const passwordPlain = 'Demo@12345';
+const email = String(process.env.BOOTSTRAP_ADMIN_EMAIL || '').trim().toLowerCase();
+const employeeCode = process.env.BOOTSTRAP_ADMIN_EMPLOYEE_CODE || 'EMP999';
+const passwordPlain = process.env.BOOTSTRAP_ADMIN_PASSWORD;
+
+if (!email || !passwordPlain) {
+  throw new Error('Set BOOTSTRAP_ADMIN_EMAIL and BOOTSTRAP_ADMIN_PASSWORD before running this script');
+}
 const password = await bcrypt.hash(passwordPlain, 10);
 
 const user = await User.findOneAndUpdate(
@@ -55,7 +59,6 @@ const user = await User.findOneAndUpdate(
 console.log(JSON.stringify({
   ok: true,
   email,
-  password: passwordPlain,
   role: role.roleName,
   userId: String(user._id),
 }));

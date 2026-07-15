@@ -13,9 +13,19 @@ export const verifyPassword = async (password, hashed) => {
 };
 
 export const generateTokens = (user) => {
+  if (!process.env.JWT_SECRET) {
+    const error = new Error('Authentication is temporarily unavailable because JWT_SECRET is not configured');
+    error.status = 503;
+    throw error;
+  }
+
   const payload = { id: user._id, roleId: user.roleId };
-  const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
-  const refreshToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN });
+  const accessToken = jwt.sign(payload, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN || '1h',
+  });
+  const refreshToken = jwt.sign(payload, process.env.JWT_SECRET, {
+    expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || '7d',
+  });
   return { accessToken, refreshToken };
 };
 
