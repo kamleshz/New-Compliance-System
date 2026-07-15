@@ -16,6 +16,7 @@ import {
   FiX as X,
 } from 'react-icons/fi';
 import api from '../services/api.js';
+import { mergeIdSelections, toggleIdSelection } from '../utils/selection.js';
 
 const emptyUserForm = {
   name: '',
@@ -162,10 +163,17 @@ function Users() {
   };
 
   const handleTeamChange = (event) => {
-    const { name, value, selectedOptions } = event.target;
+    const { name, value } = event.target;
     setTeamForm((current) => ({
       ...current,
-      [name]: name === 'members' ? Array.from(selectedOptions).map((option) => option.value) : value,
+      [name]: value,
+    }));
+  };
+
+  const setTeamMembers = (members) => {
+    setTeamForm((current) => ({
+      ...current,
+      members: typeof members === 'function' ? members(current.members) : members,
     }));
   };
 
@@ -355,6 +363,7 @@ function Users() {
           error={formError}
           saving={saving}
           onChange={handleTeamChange}
+          onSetMembers={setTeamMembers}
           onClose={closeModals}
           onSubmit={saveTeam}
         />
@@ -511,9 +520,22 @@ function UserModal({ mode, form, users, roles, teams, error, saving, onChange, o
   );
 }
 
-function TeamModal({ form, users, error, saving, onChange, onClose, onSubmit }) {
+function TeamModal({ form, users, error, saving, onChange, onSetMembers, onClose, onSubmit }) {
+  const [memberSearch, setMemberSearch] = useState('');
   const managerOptions = getAssignableUsers(users, ['Manager', 'Admin', 'Super Admin']);
   const complianceManagerOptions = getAssignableUsers(users, ['Compliance', 'Operation', 'Admin', 'Super Admin']);
+  const normalizedSearch = memberSearch.trim().toLowerCase();
+  const visibleUsers = users.filter((user) => !normalizedSearch || [user.name, user.email, getRoleName(user)]
+    .filter(Boolean)
+    .some((value) => String(value).toLowerCase().includes(normalizedSearch)));
+
+  const toggleMember = (userId) => {
+    onSetMembers((current) => toggleIdSelection(current, userId));
+  };
+
+  const selectVisibleMembers = () => {
+    onSetMembers((current) => mergeIdSelections(current, visibleUsers.map((user) => user._id)));
+  };
 
   return (
     <ModalShell title="Create New Team" subtitle="Set team details, assign leadership and select members." onClose={onClose}>
@@ -558,13 +580,58 @@ function TeamModal({ form, users, error, saving, onChange, onClose, onSubmit }) 
               <p className="text-sm font-extrabold text-slate-950">Team members</p>
               <p className="text-sm text-slate-500">Select one or more users to assign into this team.</p>
             </div>
-            <label className="block">
-              <span className="admin-field-label">Members <span className="text-red-500">*</span></span>
-              <select name="members" value={form.members} onChange={onChange} multiple className="admin-input mt-1 min-h-56">
-                {users.map((user) => <option key={user._id} value={user._id}>{user.name} - {user.email}</option>)}
-              </select>
-              <span className="mt-2 block text-xs font-medium text-slate-500">Hold Ctrl to select multiple users.</span>
-            </label>
+            <div className="space-y-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <label className="block flex-1">
+                  <span className="admin-field-label">Find members <span className="text-red-500">*</span></span>
+                  <div className="relative mt-1">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="search"
+                      value={memberSearch}
+                      onChange={(event) => setMemberSearch(event.target.value)}
+                      placeholder="Search by name, email or role"
+                      className="admin-input pl-9"
+                    />
+                  </div>
+                </label>
+                <div className="flex gap-2">
+                  <button type="button" onClick={selectVisibleMembers} className="admin-secondary-button whitespace-nowrap">
+                    Select all visible
+                  </button>
+                  <button type="button" onClick={() => onSetMembers([])} className="admin-secondary-button whitespace-nowrap" disabled={!form.members.length}>
+                    Clear
+                  </button>
+                </div>
+              </div>
+
+              <div className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-2">
+                {visibleUsers.length ? visibleUsers.map((user) => {
+                  const selected = form.members.includes(user._id);
+                  return (
+                    <label
+                      key={user._id}
+                      className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-3 transition ${selected ? 'border-emerald-300 bg-emerald-50' : 'border-transparent bg-white hover:border-slate-200'}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => toggleMember(user._id)}
+                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-bold text-slate-900">{user.name}</span>
+                        <span className="block truncate text-xs text-slate-500">{user.email} · {getRoleName(user) || 'User'}</span>
+                      </span>
+                      {selected && <span className="text-xs font-bold text-emerald-700">Selected</span>}
+                    </label>
+                  );
+                }) : (
+                  <p className="px-3 py-8 text-center text-sm font-medium text-slate-500">No matching users found.</p>
+                )}
+              </div>
+              <span className="block text-xs font-medium text-slate-500">Click any checkbox to add or remove members. Ctrl is no longer required.</span>
+            </div>
           </section>
 
           {error && <ValidationError message={error} />}
