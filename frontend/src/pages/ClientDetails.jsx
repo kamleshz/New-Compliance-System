@@ -623,22 +623,6 @@ function ClientDetails() {
       icon: BadgeCheck,
       type: 'companyCompliance',
     },
-    {
-      id: 'portal',
-      label: 'Portal Images & Email',
-      title: 'Portal Images & Email',
-      subtitle: 'Upload portal screenshots and communication email',
-      icon: ImagePlus,
-      type: 'portalAssets',
-    },
-    {
-      id: 'portalData',
-      label: 'Portal Data Upload',
-      title: 'Portal Data Upload',
-      subtitle: 'Upload portal data by category',
-      icon: FileText,
-      type: 'portalDataUpload',
-    },
   ];
 
   const financialYearLabel = financialYear === currentFinancialYear ? `${financialYear} · Active` : `${financialYear} · Viewing`;
@@ -824,30 +808,6 @@ function ClientDetails() {
                 onUpdatePortalDataMeta={updatePortalDataMeta}
                 onUpdatePortalDataSectionMeta={updatePortalDataSectionMeta}
                 onNilUploadYes={() => setActivePortalDataTab('allScreenshots')}
-              />
-            ) : activeInfoTab === 'portal' ? (
-              <PortalAssetsPanel
-                asset={portalAsset}
-                saving={savingPortalAsset}
-                onSaveEmail={updatePortalEmail}
-                onUploadImages={uploadPortalImages}
-                onRemoveImage={removePortalImage}
-              />
-            ) : activeInfoTab === 'portalData' ? (
-              <PortalDataUploadPanel
-                ccpClientId={id}
-                activeTab={activePortalDataTab}
-                onTabChange={setActivePortalDataTab}
-                upload={portalDataUpload}
-                saving={savingPortalData}
-                user={user}
-                showSalesUpload={showSalesUpload}
-                onUploadPortalDataExcel={uploadPortalDataExcel}
-                onRemovePortalDataExcel={removePortalDataExcel}
-                onUploadPortalDataImages={uploadPortalDataImages}
-                onRemovePortalDataImage={removePortalDataImage}
-                onUpdatePortalDataMeta={updatePortalDataMeta}
-                onUpdatePortalDataSectionMeta={updatePortalDataSectionMeta}
               />
             ) : (
               <CompanyBasicOverview data={data} client={client} />
@@ -1061,7 +1021,7 @@ function FinancialYearCard({
 function InfoTabSwitcher({ tabs, activeTab, onChange }) {
   return (
     <section className="rounded-3xl border border-slate-200 bg-white p-2 shadow-sm shadow-slate-200/50">
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-2 sm:grid-cols-2">
         {tabs.map((tab) => {
           const active = activeTab === tab.id;
           const Icon = tab.icon;
