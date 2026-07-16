@@ -110,6 +110,21 @@ function DashboardHome() {
     ])
       .then(([reviewsResponse, notificationsResponse, statsResponse, clientsResponse]) => {
         if (!active) return;
+        const stats = statsResponse.data.stats || {};
+        const spocRows = stats.userPiboCategoryBreakdown || [];
+
+        console.groupCollapsed(`[Dashboard Debug] CCP aggregation for ${selectedFinancialYear}`);
+        console.info('Compliance API base URL:', statsResponse.config?.baseURL || '(same origin)');
+        console.info('CCP/server diagnostics:', stats.ccpDebug || 'Diagnostics not returned by this backend deployment');
+        console.info('Dashboard client-list count:', (clientsResponse.data.clients || []).length);
+        console.table(spocRows.map((row) => ({
+          spoc: row.name,
+          registration: Number(row.clientNotForAnnualFiling || 0),
+          annualFiling: Number(row.clientForAnnualFiling || 0),
+          total: Number(row.clientNotForAnnualFiling || 0) + Number(row.clientForAnnualFiling || 0),
+        })));
+        console.groupEnd();
+
         setPurchaseReviews(reviewsResponse.data.reviews || []);
         setWorkflowNotifications((notificationsResponse.data.notifications || []).filter((item) => (
           item.financialYear === selectedFinancialYear
@@ -120,8 +135,14 @@ function DashboardHome() {
           ...(statsResponse.data.stats || {}),
         }));
       })
-      .catch(() => {
+      .catch((error) => {
         if (!active) return;
+        console.error('[Dashboard Debug] Unable to load dashboard data', {
+          apiBaseUrl: error.config?.baseURL || '(same origin)',
+          requestUrl: error.config?.url,
+          status: error.response?.status,
+          message: error.response?.data?.message || error.message,
+        });
         setPurchaseReviews([]);
         setWorkflowNotifications([]);
         setClients([]);

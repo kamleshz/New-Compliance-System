@@ -196,6 +196,15 @@ export const getCcpClientDashboardStats = async (req, res, next) => {
           .sort((first, second) => second.count - first.count || first.name.localeCompare(second.name)),
         userPiboCategoryBreakdown: [...userPiboCategoryMap.values()]
           .sort((first, second) => second.clientForAnnualFiling - first.clientForAnnualFiling || first.name.localeCompare(second.name)),
+        ccpDebug: {
+          source: process.env.CCP_API_BASE_URL?.replace(/\/$/, '') || 'not-configured',
+          selectedFinancialYear,
+          fetchedActiveClientCount: allClients.length,
+          visibleClientCount: visibleClients.length,
+          eligibleSpocCount: eligibleSpocUsers.length,
+          withFirstAnnualReturnYear: visibleClients.filter((client) => Boolean(client.firstAnnualReturnYear)).length,
+          withoutFirstAnnualReturnYear: visibleClients.filter((client) => !client.firstAnnualReturnYear).length,
+        },
         purchaseChecklistBreakdown: sortChecklistSummaryRows([...purchaseChecklistMap.values()]),
         salesChecklistBreakdown: sortChecklistSummaryRows([...salesChecklistMap.values()]),
         unassignedClientCount,

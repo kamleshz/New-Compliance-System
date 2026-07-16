@@ -19,8 +19,18 @@ const requestCcp = async (path) => {
   const headers = {};
   if (apiKey) headers['x-ccp-api-key'] = apiKey;
 
+  const startedAt = Date.now();
   const response = await fetch(`${baseUrl}${path}`, { headers });
   const body = await response.json().catch(() => ({}));
+
+  console.info('[CCP Debug] API response', {
+    baseUrl,
+    path,
+    status: response.status,
+    durationMs: Date.now() - startedAt,
+    clientCount: Array.isArray(body?.clients) ? body.clients.length : undefined,
+    hasClient: Boolean(body?.client),
+  });
 
   if (!response.ok) {
     const error = new Error(body.error || body.message || 'Unable to fetch CCP client data');
@@ -262,7 +272,18 @@ export const mapCcpClient = (client, { includeRaw = false } = {}) => {
 export const fetchCcpClients = async ({ activeOnly = true } = {}) => {
   const body = await requestCcp('/clients');
   const clients = Array.isArray(body.clients) ? body.clients.map(mapCcpClient) : [];
-  return activeOnly ? clients.filter((client) => client.status !== 'inactive') : clients;
+  const filteredClients = activeOnly ? clients.filter((client) => client.status !== 'inactive') : clients;
+
+  console.info('[CCP Debug] Client mapping summary', {
+    source: process.env.CCP_API_BASE_URL?.replace(/\/$/, ''),
+    receivedCount: clients.length,
+    returnedCount: filteredClients.length,
+    activeOnly,
+    withFirstAnnualReturnYear: filteredClients.filter((client) => Boolean(client.firstAnnualReturnYear)).length,
+    withoutFirstAnnualReturnYear: filteredClients.filter((client) => !client.firstAnnualReturnYear).length,
+  });
+
+  return filteredClients;
 };
 
 export const fetchCcpClientById = async (id) => {
