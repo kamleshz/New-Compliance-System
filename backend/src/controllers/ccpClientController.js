@@ -134,7 +134,7 @@ export const getCcpClientDashboardStats = async (req, res, next) => {
         const row = userPiboCategoryMap.get(String(dashboardOwnerId));
         const bucket = getUserPiboCategoryBucket(client?.piboCategory);
         row[bucket] += 1;
-        if (isAnnualFilingApplicable(client?.firstAnnualReturnYear, selectedFinancialYear)) {
+        if (hasFirstAnnualReturnYear(client?.firstAnnualReturnYear)) {
           row.clientForAnnualFiling += 1;
         } else {
           row.clientNotForAnnualFiling += 1;
@@ -202,8 +202,8 @@ export const getCcpClientDashboardStats = async (req, res, next) => {
           fetchedActiveClientCount: allClients.length,
           visibleClientCount: visibleClients.length,
           eligibleSpocCount: eligibleSpocUsers.length,
-          withFirstAnnualReturnYear: visibleClients.filter((client) => Boolean(client.firstAnnualReturnYear)).length,
-          withoutFirstAnnualReturnYear: visibleClients.filter((client) => !client.firstAnnualReturnYear).length,
+          withFirstAnnualReturnYear: visibleClients.filter((client) => hasFirstAnnualReturnYear(client.firstAnnualReturnYear)).length,
+          withoutFirstAnnualReturnYear: visibleClients.filter((client) => !hasFirstAnnualReturnYear(client.firstAnnualReturnYear)).length,
         },
         purchaseChecklistBreakdown: sortChecklistSummaryRows([...purchaseChecklistMap.values()]),
         salesChecklistBreakdown: sortChecklistSummaryRows([...salesChecklistMap.values()]),
@@ -498,7 +498,7 @@ function getCurrentFinancialYear(date = new Date()) {
 }
 
 function getAnnualFilingStatus(client, uploadRecord, financialYear) {
-  if (!isAnnualFilingApplicable(client?.firstAnnualReturnYear, financialYear)) {
+  if (!hasFirstAnnualReturnYear(client?.firstAnnualReturnYear)) {
     return { status: 'notApplicable', requiredSections: 0, approvedSections: 0 };
   }
 
@@ -534,10 +534,10 @@ function getUploadForFinancialYear(record, financialYear) {
     || (!record.activeFinancialYear || record.activeFinancialYear === financialYear ? record : null);
 }
 
-function isAnnualFilingApplicable(firstAnnualReturnYear, selectedFinancialYear) {
-  const firstStartYear = Number.parseInt(String(firstAnnualReturnYear || '').slice(0, 4), 10);
-  const selectedStartYear = Number.parseInt(String(selectedFinancialYear || '').slice(0, 4), 10);
-  return Number.isFinite(firstStartYear) && Number.isFinite(selectedStartYear) && selectedStartYear >= firstStartYear;
+function hasFirstAnnualReturnYear(firstAnnualReturnYear) {
+  const value = String(firstAnnualReturnYear || '').trim();
+  if (!value || ['-', 'n/a', 'na', 'null', 'undefined'].includes(value.toLowerCase())) return false;
+  return /^\d{4}\s*[-–—/]\s*\d{2,4}$/.test(value);
 }
 
 function getOwnershipNameCandidates(client) {

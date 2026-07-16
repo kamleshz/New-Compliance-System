@@ -1,4 +1,9 @@
 const inactiveStatuses = new Set(['INACTIVE', 'DISCONTINUED', 'SUSPENDED', 'DELETED']);
+const hasFirstAnnualReturnYear = (value) => {
+  const normalized = String(value || '').trim();
+  if (!normalized || ['-', 'n/a', 'na', 'null', 'undefined'].includes(normalized.toLowerCase())) return false;
+  return /^\d{4}\s*[-–—/]\s*\d{2,4}$/.test(normalized);
+};
 
 const getCcpConfig = () => {
   const baseUrl = process.env.CCP_API_BASE_URL?.replace(/\/$/, '');
@@ -279,8 +284,8 @@ export const fetchCcpClients = async ({ activeOnly = true } = {}) => {
     receivedCount: clients.length,
     returnedCount: filteredClients.length,
     activeOnly,
-    withFirstAnnualReturnYear: filteredClients.filter((client) => Boolean(client.firstAnnualReturnYear)).length,
-    withoutFirstAnnualReturnYear: filteredClients.filter((client) => !client.firstAnnualReturnYear).length,
+    withFirstAnnualReturnYear: filteredClients.filter((client) => hasFirstAnnualReturnYear(client.firstAnnualReturnYear)).length,
+    withoutFirstAnnualReturnYear: filteredClients.filter((client) => !hasFirstAnnualReturnYear(client.firstAnnualReturnYear)).length,
   });
 
   return filteredClients;
