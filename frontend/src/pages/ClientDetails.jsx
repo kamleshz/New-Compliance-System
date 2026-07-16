@@ -4171,12 +4171,21 @@ function StateWisePrePostTable({ prePostRows }) {
   const rows = buildStateWisePrePostSummary(prePostRows);
   const [pageSize, setPageSize] = useState(5);
   const [currentPage, setCurrentPage] = useState(1);
+  const [expandedStates, setExpandedStates] = useState(() => new Set());
   const dataRows = rows.filter((row) => row.state !== 'Total');
   const totalRow = rows.find((row) => row.state === 'Total');
   const totalPages = Math.max(1, Math.ceil(dataRows.length / pageSize));
   const safePage = Math.min(currentPage, totalPages);
   const pageRows = dataRows.slice((safePage - 1) * pageSize, safePage * pageSize);
   const visibleRows = totalRow ? [...pageRows, totalRow] : pageRows;
+  const toggleState = (stateKey) => {
+    setExpandedStates((current) => {
+      const next = new Set(current);
+      if (next.has(stateKey)) next.delete(stateKey);
+      else next.add(stateKey);
+      return next;
+    });
+  };
 
   return (
     <section className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -4184,7 +4193,7 @@ function StateWisePrePostTable({ prePostRows }) {
         <div>
           <h5 className="text-sm font-extrabold text-slate-950">State Wise</h5>
           <p className="text-xs font-semibold text-slate-500">
-            Values are grouped from Pre/Post Upload by state name.
+            Values are grouped from Pre/Post Upload by state name. Expand a state to view its Category of Plastic breakdown.
           </p>
         </div>
         {dataRows.length ? (
@@ -4216,15 +4225,49 @@ function StateWisePrePostTable({ prePostRows }) {
             </tr>
           </thead>
           <tbody>
-            {visibleRows.length ? visibleRows.map((row) => (
-              <tr key={row.state} className={row.state === 'Total' ? 'bg-slate-100 font-extrabold' : 'bg-white'}>
-                <td className="border border-slate-300 bg-slate-100 px-3 py-2 text-left font-bold text-slate-900">{row.state}</td>
-                <td className="border border-slate-300 bg-emerald-50 px-3 py-2 font-semibold text-slate-900">{formatFlexibleNumber(row.preConsumer)}</td>
-                <td className="border border-slate-300 bg-emerald-50 px-3 py-2 font-semibold text-slate-900">{formatFlexibleNumber(row.postConsumer)}</td>
-                <td className="border border-slate-300 bg-emerald-50 px-3 py-2 font-semibold text-slate-900">{formatFlexibleNumber(row.exportValue)}</td>
-                <td className="border border-slate-300 bg-emerald-50 px-3 py-2 font-semibold text-slate-900">{formatFlexibleNumber(row.total)}</td>
-              </tr>
-            )) : (
+            {visibleRows.length ? visibleRows.map((row) => {
+              const isTotal = row.state === 'Total';
+              const isExpanded = !isTotal && expandedStates.has(row.key);
+              return (
+                <Fragment key={row.key || row.state}>
+                  <tr className={isTotal ? 'bg-slate-100 font-extrabold' : 'bg-white'}>
+                    <td className="border border-slate-300 bg-slate-100 p-0 text-left font-bold text-slate-900">
+                      {isTotal ? (
+                        <span className="block px-3 py-2">{row.state}</span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => toggleState(row.key)}
+                          aria-expanded={isExpanded}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left transition hover:bg-slate-200/70"
+                        >
+                          <ChevronDown className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                          <span>{row.state}</span>
+                          <span className="ml-auto rounded-full bg-white px-2 py-0.5 text-[10px] font-extrabold text-slate-500 ring-1 ring-slate-200">
+                            {row.categories.length} categories
+                          </span>
+                        </button>
+                      )}
+                    </td>
+                    <td className="border border-slate-300 bg-emerald-50 px-3 py-2 font-semibold text-slate-900">{formatFlexibleNumber(row.preConsumer)}</td>
+                    <td className="border border-slate-300 bg-emerald-50 px-3 py-2 font-semibold text-slate-900">{formatFlexibleNumber(row.postConsumer)}</td>
+                    <td className="border border-slate-300 bg-emerald-50 px-3 py-2 font-semibold text-slate-900">{formatFlexibleNumber(row.exportValue)}</td>
+                    <td className="border border-slate-300 bg-emerald-50 px-3 py-2 font-semibold text-slate-900">{formatFlexibleNumber(row.total)}</td>
+                  </tr>
+                  {isExpanded ? row.categories.map((category) => (
+                    <tr key={`${row.key}-${category.category}`} className="bg-white">
+                      <td className="border border-slate-300 bg-slate-50 py-2 pl-10 pr-3 text-left text-xs font-extrabold text-slate-700">
+                        <span className="text-slate-400">Category of Plastic:</span> {category.category}
+                      </td>
+                      <td className="border border-slate-300 bg-emerald-50/50 px-3 py-2 text-xs font-semibold text-slate-700">{formatFlexibleNumber(category.preConsumer)}</td>
+                      <td className="border border-slate-300 bg-emerald-50/50 px-3 py-2 text-xs font-semibold text-slate-700">{formatFlexibleNumber(category.postConsumer)}</td>
+                      <td className="border border-slate-300 bg-emerald-50/50 px-3 py-2 text-xs font-semibold text-slate-700">{formatFlexibleNumber(category.exportValue)}</td>
+                      <td className="border border-slate-300 bg-emerald-50/50 px-3 py-2 text-xs font-extrabold text-slate-800">{formatFlexibleNumber(category.total)}</td>
+                    </tr>
+                  )) : null}
+                </Fragment>
+              );
+            }) : (
               <tr>
                 <td colSpan="5" className="border border-slate-300 px-3 py-6 text-sm font-bold text-slate-500">
                   Upload Pre/Post data with a State Name column to view state-wise totals.
@@ -4721,33 +4764,61 @@ function buildStateWisePrePostSummary(prePostRows) {
 
     const key = state.toLowerCase().replace(/\s+/g, ' ');
     const current = summaryMap.get(key) || {
+      key,
       state,
+      preConsumer: 0,
+      postConsumer: 0,
+      exportValue: 0,
+      total: 0,
+      categoryMap: new Map(),
+    };
+
+    const preConsumer = readQuantityOrWeightedValue(
+      row,
+      ['Pre Consumer Waste Plastic Quantity (TPA)', 'Pre Consumer Quantity (TPA)', 'Pre Consumer Waste Plastic Quantity', 'Pre Consumer'],
+      ['Pre Consumer Waste Recycled Plastic %', 'Pre Consumer Recycled Plastic %', 'Pre Consumer Waste Recycled %'],
+    );
+    const postConsumer = readQuantityOrWeightedValue(
+      row,
+      ['Post Consumer Waste Plastic Quantity (TPA)', 'Post Consumer Quantity (TPA)', 'Post Consumer Waste Plastic Quantity', 'Post Consumer'],
+      ['Post Consumer Waste Recycled Plastic %', 'Post Consumer Recycled Plastic %', 'Post Consumer Waste Recycled %'],
+    );
+    const exportValue = readQuantityOrWeightedValue(
+      row,
+      ['Export Quantity Plastic Quantity (TPA)', 'Export Quantity (TPA)', 'Export Plastic Quantity (TPA)', 'Export'],
+      ['Export Quantity Recycled Plastic %', 'Export Recycled Plastic %', 'Export Quantity Recycled %'],
+    );
+    const category = normalizeCategory(readField(row, ['Category of Plastic', 'Category of Plastic Type', 'Plastic Category', 'Category'])) || 'Not specified';
+    const categoryRow = current.categoryMap.get(category) || {
+      category,
       preConsumer: 0,
       postConsumer: 0,
       exportValue: 0,
       total: 0,
     };
 
-    current.preConsumer += readQuantityOrWeightedValue(
-      row,
-      ['Pre Consumer Waste Plastic Quantity (TPA)', 'Pre Consumer Quantity (TPA)', 'Pre Consumer Waste Plastic Quantity', 'Pre Consumer'],
-      ['Pre Consumer Waste Recycled Plastic %', 'Pre Consumer Recycled Plastic %', 'Pre Consumer Waste Recycled %'],
-    );
-    current.postConsumer += readQuantityOrWeightedValue(
-      row,
-      ['Post Consumer Waste Plastic Quantity (TPA)', 'Post Consumer Quantity (TPA)', 'Post Consumer Waste Plastic Quantity', 'Post Consumer'],
-      ['Post Consumer Waste Recycled Plastic %', 'Post Consumer Recycled Plastic %', 'Post Consumer Waste Recycled %'],
-    );
-    current.exportValue += readQuantityOrWeightedValue(
-      row,
-      ['Export Quantity Plastic Quantity (TPA)', 'Export Quantity (TPA)', 'Export Plastic Quantity (TPA)', 'Export'],
-      ['Export Quantity Recycled Plastic %', 'Export Recycled Plastic %', 'Export Quantity Recycled %'],
-    );
+    current.preConsumer += preConsumer;
+    current.postConsumer += postConsumer;
+    current.exportValue += exportValue;
     current.total = current.preConsumer + current.postConsumer + current.exportValue;
+    categoryRow.preConsumer += preConsumer;
+    categoryRow.postConsumer += postConsumer;
+    categoryRow.exportValue += exportValue;
+    categoryRow.total = categoryRow.preConsumer + categoryRow.postConsumer + categoryRow.exportValue;
+    current.categoryMap.set(category, categoryRow);
     summaryMap.set(key, current);
   });
 
-  const rows = Array.from(summaryMap.values()).sort((first, second) => first.state.localeCompare(second.state));
+  const rows = Array.from(summaryMap.values())
+    .map(({ categoryMap, ...row }) => ({
+      ...row,
+      categories: Array.from(categoryMap.values()).sort((first, second) => (
+        (purchaseCategories.indexOf(first.category) === -1 ? Number.MAX_SAFE_INTEGER : purchaseCategories.indexOf(first.category))
+        - (purchaseCategories.indexOf(second.category) === -1 ? Number.MAX_SAFE_INTEGER : purchaseCategories.indexOf(second.category))
+        || first.category.localeCompare(second.category)
+      )),
+    }))
+    .sort((first, second) => first.state.localeCompare(second.state));
   if (!rows.length) return [];
 
   const total = rows.reduce((acc, row) => {
@@ -4757,11 +4828,13 @@ function buildStateWisePrePostSummary(prePostRows) {
     acc.total += row.total;
     return acc;
   }, {
+    key: 'total',
     state: 'Total',
     preConsumer: 0,
     postConsumer: 0,
     exportValue: 0,
     total: 0,
+    categories: [],
   });
 
   return [...rows, total];
