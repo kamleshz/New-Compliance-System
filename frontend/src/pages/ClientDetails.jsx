@@ -4069,7 +4069,7 @@ function EntitySummaryTable({ title, rows, group, tone, highlightUnmatchedEntiti
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-      <div className={`${headerClass} px-4 py-3 text-sm font-extrabold text-white`}>
+      <div className={`${headerClass} px-4 py-3 text-center text-sm font-extrabold text-white`}>
         {title}
       </div>
       <div className="overflow-x-auto">

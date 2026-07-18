@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   FiBell as Bell,
   FiBriefcase as Briefcase,
+  FiChevronDown as ChevronDown,
   FiChevronLeft as ChevronLeft,
   FiChevronRight as ChevronRight,
   FiExternalLink as ExternalLink,
@@ -349,11 +350,13 @@ function DashboardHome() {
 }
 
 function UserPiboCategoryTable({ data }) {
+  const [expandedUsers, setExpandedUsers] = useState(() => new Set());
   const rows = useMemo(() => (
     (data || [])
       .map((item) => ({
         userId: item.userId || item.name,
         name: item.name || 'User',
+        clients: Array.isArray(item.clients) ? item.clients : [],
         ...userPiboColumns.reduce((values, column) => ({
           ...values,
           [column.key]: Number(item[column.key] || 0),
@@ -364,6 +367,15 @@ function UserPiboCategoryTable({ data }) {
       }))
       .filter((item) => item.name)
   ), [data]);
+
+  const toggleUser = (userId) => {
+    setExpandedUsers((current) => {
+      const next = new Set(current);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
+  };
 
   const totals = useMemo(() => rows.reduce((summary, row) => {
     userPiboColumns.forEach((column) => {
@@ -415,17 +427,62 @@ function UserPiboCategoryTable({ data }) {
             </tr>
           </thead>
           <tbody className="text-slate-900">
-            {rows.length ? rows.map((row) => (
-              <tr key={row.userId} className="group bg-white transition hover:bg-slate-50">
-                <td className="sticky left-0 z-10 border-b border-r border-slate-100 bg-white px-4 py-3 font-black text-slate-950 group-hover:bg-slate-50">{row.name}</td>
-                {userPiboColumns.map((column) => (
-                  <NumberCell key={column.key} value={row[column.key]} />
-                ))}
-                <NumberCell value={row.clientNotForAnnualFiling} className="bg-amber-100 font-black text-amber-950" />
-                <NumberCell value={row.clientForAnnualFiling} className="bg-emerald-100 font-black text-emerald-950" />
-                <NumberCell value={row.totalAnnualFiling} className="bg-sky-100 font-black text-sky-950" />
-              </tr>
-            )) : (
+            {rows.length ? rows.map((row) => {
+              const expanded = expandedUsers.has(row.userId);
+              return (
+                <Fragment key={row.userId}>
+                  <tr className="group bg-white transition hover:bg-slate-50">
+                    <td className="sticky left-0 z-10 border-b border-r border-slate-100 bg-white px-4 py-3 font-black text-slate-950 group-hover:bg-slate-50">
+                      <button
+                        type="button"
+                        onClick={() => toggleUser(row.userId)}
+                        aria-expanded={expanded}
+                        className="flex w-full items-center gap-2 text-left"
+                      >
+                        <ChevronDown className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${expanded ? '' : '-rotate-90'}`} />
+                        <span>{row.name}</span>
+                      </button>
+                    </td>
+                    {userPiboColumns.map((column) => (
+                      <NumberCell key={column.key} value={row[column.key]} />
+                    ))}
+                    <NumberCell value={row.clientNotForAnnualFiling} className="bg-amber-100 font-black text-amber-950" />
+                    <NumberCell value={row.clientForAnnualFiling} className="bg-emerald-100 font-black text-emerald-950" />
+                    <NumberCell value={row.totalAnnualFiling} className="bg-sky-100 font-black text-sky-950" />
+                  </tr>
+                  {expanded ? (
+                    <tr className="bg-slate-50/80">
+                      <td colSpan={userPiboColumns.length + 4} className="border-b border-slate-200 p-4">
+                        {row.clients.length ? (
+                          <div className="overflow-x-auto border border-slate-200 bg-white">
+                            <table className="w-full min-w-[760px] border-collapse text-left text-xs">
+                              <thead className="bg-slate-100 uppercase tracking-[0.1em] text-slate-600">
+                                <tr>
+                                  <th className="border-b border-r border-slate-200 px-4 py-2.5 font-black">Client Name</th>
+                                  <th className="border-b border-r border-slate-200 px-4 py-2.5 font-black">CEPR User ID</th>
+                                  <th className="border-b border-slate-200 px-4 py-2.5 font-black">CEPR Password</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {row.clients.map((client, index) => (
+                                  <tr key={client.id || `${row.userId}-${index}`} className="odd:bg-white even:bg-slate-50/70">
+                                    <td className="border-b border-r border-slate-200 px-4 py-2.5 font-black text-slate-950">{client.name || 'Unnamed client'}</td>
+                                    <td className="border-b border-r border-slate-200 px-4 py-2.5 font-bold text-slate-900">{client.ceprUserId || '-'}</td>
+                                    <td className="border-b border-slate-200 px-4 py-2.5 font-bold text-slate-900">{client.ceprPassword || '-'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <p className="py-2 text-center font-bold text-slate-500">No clients assigned to this user.</p>
+                        )}
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
+              );
+            }) : (
               <tr>
                 <td colSpan={userPiboColumns.length + 4} className="px-3 py-8 text-center font-bold text-slate-500">
                   No eligible SPOC users found.

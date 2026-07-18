@@ -134,6 +134,12 @@ export const getCcpClientDashboardStats = async (req, res, next) => {
         const row = userPiboCategoryMap.get(String(dashboardOwnerId));
         const bucket = getUserPiboCategoryBucket(client?.piboCategory);
         row[bucket] += 1;
+        row.clients.push({
+          id: clientId,
+          name: client?.clientName || client?.clientLegalName || client?.tradeName || 'Unnamed client',
+          ceprUserId: client?.ceprUserId || '',
+          ceprPassword: client?.ceprPassword || '',
+        });
         if (hasFirstAnnualReturnYear(client?.firstAnnualReturnYear)) {
           row.clientForAnnualFiling += 1;
         } else {
@@ -308,6 +314,7 @@ function createEmptyUserPiboRow(user = {}) {
   }), {
     userId: String(user._id),
     name: user.name || 'User',
+    clients: [],
     clientForAnnualFiling: 0,
     clientNotForAnnualFiling: 0,
   });

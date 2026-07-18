@@ -220,6 +220,8 @@ export const mapCcpClient = (client, { includeRaw = false } = {}) => {
     servicesOffered: getCcpField(client, 'servicesOffered'),
     website: getCcpField(client, 'website'),
     eprCategory: getCcpField(client, ['eprCategory', 'EPRCategory']),
+    ceprUserId: getCcpField(client, ['ceprUserId', 'ceprUserID', 'eprUserId', 'eprUserID']),
+    ceprPassword: getCcpField(client, ['ceprPassword', 'eprPassword']),
     onboardingYear: getCcpField(client, 'onboardingYear'),
     firstAnnualReturnYear: getCcpField(client, 'firstAnnualReturnYear'),
     msmeStatus: getMsmeStatus(client),

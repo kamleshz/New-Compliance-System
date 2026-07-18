@@ -362,16 +362,18 @@ function ClientMaster() {
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-sm">
                   {paginatedClients.map((client, index) => {
-                    const clientId = encodeURIComponent(client?.id);
                     return (
                       <tr
                         key={client?.id}
                         className={`group transition hover:bg-[#f8fbfa] ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/35'}`}
-                        onClick={() => navigate(`/clients/${clientId}`)}
+                        onClick={() => setPoModalClient(client)}
                         role="button"
                         tabIndex={0}
                         onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') navigate(`/clients/${clientId}`);
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            setPoModalClient(client);
+                          }
                         }}
                       >
                         <td className="px-5 py-4">
